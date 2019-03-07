@@ -1,0 +1,116 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch
+  namespace: efk
+  labels:
+    service: elasticsearch
+spec:
+  clusterIP: None
+  ports:
+  - port: 9200
+    name: serving
+  - port: 9300
+    name: node-to-node
+  selector:
+    service: elasticsearch
+
+--- 
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: 
+  labels: 
+    service: elasticsearch
+  name: elasticsearch
+  namespace: efk
+spec: 
+  replicas: 3
+  selector: 
+    matchLabels: 
+      service: elasticsearch
+  serviceName: es
+  template: 
+    metadata: 
+      labels: 
+        service: elasticsearch
+    spec: 
+      containers: 
+        - 
+          env: 
+            - 
+              name: cluster.name
+              value: elasticsearch-cluster
+            - 
+              name: node.name
+              valueFrom: 
+                fieldRef: 
+                  fieldPath: metadata.name
+            - 
+              name: discovery.zen.ping.unicast.hosts
+              value: "elasticsearch-0.es.default.svc.cluster.local,elasticsearch-1.es.default.svc.cluster.local,elasticsearch-2.es.default.svc.cluster.local,elasticsearch-3.es.default.svc.cluster.local,elasticsearch-4.es.default.svc.cluster.local"
+            - 
+              name: ES_JAVA_OPTS
+              value: "-Xms4g -Xmx4g"
+          image: "docker.elastic.co/elasticsearch/elasticsearch:6.5.1"
+          name: elasticsearch
+          ports: 
+            - 
+              containerPort: 9200
+              name: http
+            - 
+              containerPort: 9300
+              name: tcp
+          resources: 
+            limits: 
+              memory: 8Gi
+            requests: 
+              memory: 8Gi
+          volumeMounts: 
+            - 
+              mountPath: /usr/share/elasticsearch/data
+              name: data
+      initContainers: 
+        - 
+          command: 
+            - sh
+            - "-c"
+            - "chown -R 1000:1000 /usr/share/elasticsearch/data"
+          image: busybox
+          name: fix-the-volume-permission
+          securityContext: 
+            privileged: true
+          volumeMounts: 
+            - 
+              mountPath: /usr/share/elasticsearch/data
+              name: data
+        - 
+          command: 
+            - sysctl
+            - "-w"
+            - vm.max_map_count=262144
+          image: busybox
+          name: increase-the-vm-max-map-count
+          securityContext: 
+            privileged: true
+        - 
+          command: 
+            - sh
+            - "-c"
+            - "ulimit -n 65536"
+          image: busybox
+          name: increase-the-ulimit
+          securityContext: 
+            privileged: true
+      terminationGracePeriodSeconds: 300
+  volumeClaimTemplates: 
+    - 
+      metadata: 
+        name: data
+      spec: 
+        accessModes: 
+          - ReadWriteOnce
+        resources: 
+          requests: 
+            storage: 10Gi
+

@@ -1,0 +1,54 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: kibana
+  namespace: efk
+spec:
+  selector:
+    matchLabels:
+      run: kibana
+  template:
+    metadata:
+      labels:
+        run: kibana
+    spec:
+      initContainers:            
+      - name: wait
+        image: busybox
+        imagePullPolicy: Always
+        command:
+        - sh        
+        - -c 
+        - |  
+           while [[ $(curl -s -o /dev/null -w "%{http_code}" http://elasticsearch:9200) -ne 200 ]]; do
+           	echo "Elasticsearch endpoint not ready"
+           	sleep 5s
+           done
+           echo "Elasticsearch endpoint is ready"
+      containers:
+      - name: kibana
+        image: "docker.elastic.co/kibana/kibana:6.5.1"
+        env:
+        - name: ELASTICSEARCH_URL
+          value: http://elasticsearch:9200
+        ports:
+        - containerPort: 5601
+          name: http
+          protocol: TCP
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: kibana
+  namespace: efk
+  labels:
+    service: kibana
+spec:
+  type: NodePort
+  selector:
+    run: kibana
+  ports:
+  - port: 5601
+    targetPort: 5601
