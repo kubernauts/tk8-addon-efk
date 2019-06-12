@@ -11,7 +11,9 @@
 EFK stands for:
 
 **E** - Elasticsearch
+
 **F** - Fluentd
+
 **K** - Kibana
 
 A well-known logging stack for visualizing the centralized logging.
