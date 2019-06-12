@@ -1,49 +1,136 @@
-# TK8 CLi example Addon for developer
+# TK8 addon - EFK
 
-## Getting Started
+## What are TK8 addons?
 
-These instructions will get you all information you need to create your own tk8 addons on top of your kubernetes cluster
+- TK8 add-ons provide freedom of choice for the user to deploy tools and applications without being tied to any customized formats of deployment.
+- Simplified deployment process via CLI (will also be available via TK8 web in future).
+- With the TK8 add-ons platform, you can also build your own add-ons.
 
-### Prerequisites
+## What is EFK?
 
-This addon was created for the tk8 cli you could find it here: https://github.com/kubernauts/tk8
-Addon integration is supported on Version 0.5.0 and greater
+EFK stands for:
 
-Alternative you can apply the main.yml directly with kubectl
+**E** - Elasticsearch
+**F** - Fluentd
+**K** - Kibana
 
-## Development
+A well-known logging stack for visualizing the centralized logging.
 
-Create your own addons for TK8 is easy as well.
+**Elasticsearch** is used as a centralized place to store logs.
 
-```bash
-./tk8 addon create my-addon
+**Fluentd** is a popular open-source data collector that we'll set up on our Kubernetes nodes to tail container log files, filter and transform the log data, and deliver it to the Elasticsearch cluster, where it will be indexed and stored.
+
+**Kibana** provides a nice GUI to visualize your logs, create dashboards, alerting via Watcher, etc.
+
+## Prerequisites
+
+A Kubernetes cluster
+
+## Get Started
+
+You can install EFK stack on the Kubernetes cluster via TK8 addons functionality.
+
+What do you need:
+- tk8 binary
+
+## Deploy EFK on the Kubernetes Cluster
+
+Run:
+```
+$ tk8 addon install efk
+Search local for efk
+check if provided a url
+Search addon on kubernauts space.
+Cloning into 'efk'...
+Install efk
+execute main.sh
+Creating main.yaml
+add  ./elasticsearch/efk-namespace.yaml
+add  ./elasticsearch/elasticsearch.yaml
+add  ./kibana/kibana.yaml
+add  ./fluentd/fluentd.yaml
+apply efk/main.yml
+namespace/efk created
+service/elasticsearch created
+statefulset.apps/elasticsearch created
+deployment.extensions/kibana created
+service/kibana created
+serviceaccount/fluentd created
+clusterrole.rbac.authorization.k8s.io/fluentd created
+clusterrolebinding.rbac.authorization.k8s.io/fluentd created
+daemonset.extensions/fluentd created
+efk installation complete
+```
+This command will clone the https://github.com/kubernauts/tk8-addon-efk repository locally and create the EFK stack.
+
+This command also creates:
+
+- A separate namespace efk for installing components
+- An HA Elasticsearch cluster (3 replicas)
+- Deploys fluentd as a Daemonset on all worker nodes
+- Kibana is exposed as a NodePort service. This can easily be changed to a LoadBalancer type, if required.
+
+If all goes, you should all resources in Running state:
+```
+$ kubectl get all -n efk
+NAME                          READY   STATUS    RESTARTS   AGE
+pod/elasticsearch-0           1/1     Running   0          2m39s
+pod/elasticsearch-1           1/1     Running   0          2m25s
+pod/elasticsearch-2           1/1     Running   0          2m10s
+pod/fluentd-9dbgt             1/1     Running   0          2m37s
+pod/fluentd-9tdcc             1/1     Running   0          2m37s
+pod/fluentd-d2kqr             1/1     Running   0          2m37s
+pod/fluentd-tjw9j             1/1     Running   0          2m37s
+pod/fluentd-x7qkz             1/1     Running   0          2m37s
+pod/kibana-5f469fb788-rtsqx   1/1     Running   0          2m39s
+ 
+NAME                    TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)             AGE
+service/elasticsearch   ClusterIP   None           <none>        9200/TCP,9300/TCP   2m41s
+service/kibana          NodePort    10.43.54.114   <none>        5601:31464/TCP      2m39s
+ 
+NAME                     DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR   AGE
+daemonset.apps/fluentd   5         5         5       5            5           <none>          2m38s
+ 
+NAME                     READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/kibana   1/1     1            1           2m40s
+ 
+NAME                                DESIRED   CURRENT   READY   AGE
+replicaset.apps/kibana-5f469fb788   1         1         1       2m40s
+ 
+NAME                             READY   AGE
+statefulset.apps/elasticsearch   3/3     2m40s
 ```
 
-Then you can provide the main.yml with your addon components.
-Also it is possible to add a main.sh file wich runs before the main.yml is applyed to the cluster. So you can do some more stuff or generate a main.yml from subfolder yaml files.
+## Accessing Kibana UI
 
-To get more support join us on [Slack](https://kubernauts-slack-join.herokuapp.com)
+Since we're exposing Kibana service as a NodePort, you can open http://worker-node-ip:nodeport in the browser and you should be greeted with a welcome screen!
 
-## Contributing
+Get started with a sample data or explore on your own, it's all up to you.
 
-Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c63ec426) for details on our code of conduct, and the process for submitting pull requests to us.
+## Uninstalling EFK
 
-## Versioning
-
-We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/your/project/tags). 
-
-## Authors
-
-* **Billie Thompson** - *Initial work* - [PurpleBooth](https://github.com/PurpleBooth)
-
-See also the list of [contributors](https://github.com/kubernauts/tk8/contributors) who participated in this project.
-
-## License
-
-This project is licensed under the Apache License - see the [LICENSE.md](LICENSE.md) file for details
-
-## Acknowledgments
-
-* Hat tip to anyone whose code was used
-* Inspiration
-* etc
+For removing EFK stack from your cluster, we can use TK8 addon's destroy functionality. Run:
+```
+$ tk8 addon destroy efk
+Search local for efk
+Addon efk already exist
+Found efk local.
+Destroying efk
+execute main.sh
+Creating main.yaml
+add  ./elasticsearch/efk-namespace.yaml
+add  ./elasticsearch/elasticsearch.yaml
+add  ./kibana/kibana.yaml
+add  ./fluentd/fluentd.yaml
+delete efk from cluster
+namespace "efk" deleted
+service "elasticsearch" deleted
+statefulset.apps "elasticsearch" deleted
+deployment.extensions "kibana" deleted
+service "kibana" deleted
+serviceaccount "fluentd" deleted
+clusterrole.rbac.authorization.k8s.io "fluentd" deleted
+clusterrolebinding.rbac.authorization.k8s.io "fluentd" deleted
+daemonset.extensions "fluentd" deleted
+efk destroy complete
+```
